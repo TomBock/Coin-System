@@ -1,0 +1,11 @@
+mysql.host: 127.0.0.1
+mysql.port: 3036
+mysql.database: test
+mysql.username: root
+mysql.password: root
+
+messages:
+  read: "§cBalance: §e{balance}"
+  add: "§cYou added §e{amount} §cto §e{player}'s §cbalance"
+  remove: "§cYou removed §e{amount} §cfrom §e{player}'s §cbalance"
+  error: "§cAn error occurred while executing the command"

@@ -1,0 +1,17 @@
+name: Coin-System
+version: 1.0
+main: com.bocktom.coinsystem.CoinSystemPlugin
+commands:
+  coins:
+    description: Shows the amount of coins you have
+    usage: /coins
+    permission: coinsystem.use
+    alias: [coin]
+
+permissions:
+    coinsystem.use:
+        description: Allows the player to use the /coins command
+        default: true
+    coinsystem.admin:
+        description: Allows the player to use the /coins [add/remove] <amount> command
+        default: op
