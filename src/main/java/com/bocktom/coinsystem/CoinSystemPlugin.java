@@ -2,27 +2,31 @@ package com.bocktom.coinsystem;
 
 import com.bocktom.coinsystem.db.Messages;
 import com.bocktom.coinsystem.db.MySQL;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 import java.io.Reader;
 
 public class CoinSystemPlugin extends JavaPlugin {
 
 	public static CoinSystemPlugin instance;
+	private BukkitScheduler scheduler;
 
 	@Override
 	public void onEnable() {
 		instance = this;
+		scheduler = getServer().getScheduler();
 
 		setupDefaultConfig();
 
 		//noinspection DataFlowIssue
 		getCommand("coins").setExecutor(new CoinCommands(this));
 
-		MySQL.setupDatabase();
+		scheduler.runTaskAsynchronously(this, MySQL::setupDatabase);
 	}
 
 	private void setupDefaultConfig() {
@@ -36,18 +40,22 @@ public class CoinSystemPlugin extends JavaPlugin {
 		}
 	}
 
-	public void readBalance(Player player) {
-		int balance = MySQL.readCoins(player.getUniqueId());
-		player.sendMessage(Messages.load("messages.read", player, balance));
+	public void readBalance(CommandSender sender, Player player) {
+		scheduler.runTaskAsynchronously(this, () -> {
+			int balance = MySQL.readCoins(player.getUniqueId());
+			sender.sendMessage(Messages.load("messages.read", player, balance));
+		});
 	}
 
-	public void addCoins(Player player, int i) {
-		boolean result = MySQL.addCoinTransaction(player.getUniqueId(), i);
+	public void addCoins(CommandSender sender, Player player, int i) {
+		scheduler.runTaskAsynchronously(this, () -> {
+			boolean result = MySQL.addCoinTransaction(player.getUniqueId(), i);
 
-		if(result) {
-			player.sendMessage(Messages.load(i >= 0 ? "messages.add" : "messages.remove", player, -1, i));
-		} else {
-			player.sendMessage(Messages.load("messages.error", player, -1, i));
-		}
+			if(result) {
+				sender.sendMessage(Messages.load(i >= 0 ? "messages.add" : "messages.remove", player, -1, i));
+			} else {
+				sender.sendMessage(Messages.load("messages.error", player, -1, i));
+			}
+		});
 	}
 }

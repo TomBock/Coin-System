@@ -1,5 +1,6 @@
 package com.bocktom.coinsystem;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,49 +16,65 @@ public class CoinCommands implements CommandExecutor {
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-		if(!(sender instanceof Player player))
+		// NORMAL USER
+		if((sender instanceof Player player) && !player.hasPermission("coinsystem.use")) {
+			player.sendMessage("You do not have permission to use this command");
 			return true;
+		}
 
-		// Read amount of coins
+		// Read own balance
 		if(args.length == 0) {
-
-			if(!player.hasPermission("coinsystem.use")) {
-				player.sendMessage("You don't have permission to do that");
-				return true;
+			if(sender instanceof Player player) {
+				plugin.readBalance(sender, player);
+			} else {
+				sender.sendMessage("Usage: /coins <player?> or /coins [add/remove] <amount> <player?>");
 			}
+		}
 
-			plugin.readBalance(player);
+		// ADMIN USER
+		if((sender instanceof Player player) && !player.hasPermission("coinsystem.admin")) {
+			player.sendMessage("You do not have permission to use this command");
 			return true;
 		}
 
-		if(args.length != 2) {
-			player.sendMessage("Usage: /coins [add/remove] <amount>");
-			return true;
+		// Read another balance
+		if(args.length == 1) {
+			Player target = Bukkit.getPlayer(args[0]);
+			if(target == null) {
+				sender.sendMessage("Player " + args[0] + " not found");
+			} else {
+				plugin.readBalance(sender, target);
+			}
 		}
 
-		// Add or remove coins
-		if(!player.hasPermission("coinsystem.admin")) {
-			player.sendMessage("You don't have permission to do that");
-			return true;
+		if(args.length >= 2) {
+
+			boolean isAdd = args[0].equals("add");
+			boolean isRemove = args[0].equals("remove");
+			int amount = Integer.parseInt(args[1]);
+
+			if(isAdd || isRemove) {
+				if(args.length == 2) {
+
+					// Oneself
+					if(sender instanceof Player player) {
+						plugin.addCoins(sender, player, isAdd ?  amount: -amount);
+					} else {
+						sender.sendMessage("Usage: /coins <player?> or /coins [add/remove] <amount> <player?>");
+					}
+				} else {
+
+					// Another player
+					Player target = Bukkit.getPlayer(args[2]);
+					if(target == null) {
+						sender.sendMessage("Player " + args[2] + " not found");
+					} else {
+						plugin.addCoins(sender, target, isAdd ? amount : -amount);
+					}
+				}
+			}
 		}
 
-		boolean isAdd = args[0].equals("add");
-		boolean isRemove = args[0].equals("remove");
-
-		if(!isAdd && !isRemove) {
-			player.sendMessage("Usage: /coins [add/remove] <amount>");
-			return true;
-		}
-
-		// check if args[1] is a number
-		if(!args[1].matches("\\d+")) {
-			player.sendMessage("Amount must be a number");
-			return true;
-		}
-
-		int amount = Integer.parseInt(args[1]);
-
-		plugin.addCoins(player, isAdd ? amount : -amount);
 		return true;
 	}
 }

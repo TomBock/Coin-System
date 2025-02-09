@@ -13,5 +13,5 @@ permissions:
         description: Allows the player to use the /coins command
         default: true
     coinsystem.admin:
-        description: Allows the player to use the /coins [add/remove] <amount> command
+        description: Allows the player to use the /coins <player?> and /coins [add/remove] <amount> <player?> command
         default: op
