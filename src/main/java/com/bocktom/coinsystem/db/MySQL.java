@@ -69,11 +69,11 @@ public class MySQL {
 		}
 	}
 
-	public static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, int amount) {
+	public static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, long amount) {
 		return addCoinTransaction(playerId, amount, MySQL.getInstance().retries);
 	}
 
-	private static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, int amount, int retriesLeft) {
+	private static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, long amount, int retriesLeft) {
 		CompletableFuture<Boolean> future = new CompletableFuture<>();
 
 		MySQL mySQL = getInstance();
@@ -90,8 +90,8 @@ public class MySQL {
 				// 1: Insert or update Player Balance
 				affectedRows = new StatementBuilder(con, "insertbalance.sql")
 						.setBytes(1, playerIdBytes)
-						.setInt(2, amount)
-						.setInt(3, amount)
+						.setLong(2, amount)
+						.setLong(3, amount)
 						.executeUpdate();
 
 				if(affectedRows == 0) {
@@ -118,12 +118,12 @@ public class MySQL {
 		return future;
 	}
 
-	public static CompletableFuture<Integer> readBalance(UUID playerId) {
+	public static CompletableFuture<Long> readBalance(UUID playerId) {
 		return attemptReadCoins(playerId, MySQL.getInstance().retries);
 	}
 
-	private static CompletableFuture<Integer> attemptReadCoins(UUID playerId, int retriesLeft) {
-		CompletableFuture<Integer> future = new CompletableFuture<>();
+	private static CompletableFuture<Long> attemptReadCoins(UUID playerId, int retriesLeft) {
+		CompletableFuture<Long> future = new CompletableFuture<>();
 		MySQL mySQL = getInstance();
 
 		Bukkit.getScheduler().runTaskAsynchronously(CoinSystemPlugin.instance, () -> {
@@ -136,9 +136,9 @@ public class MySQL {
 						.executeQuery()) {
 
 					if(rs != null && rs.next()) {
-						future.complete(rs.getInt("coins"));
+						future.complete(rs.getLong("coins"));
 					} else {
-						future.complete(0);
+						future.complete(0L);
 					}
 				}
 			} catch (Exception e) {
@@ -151,7 +151,7 @@ public class MySQL {
 					}, 20L); // 1 second later
 
 				} else {
-					future.complete(-1);
+					future.complete(-1L);
 				}
 			}
 		});

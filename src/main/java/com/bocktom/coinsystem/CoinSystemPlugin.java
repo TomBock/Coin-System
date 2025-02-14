@@ -48,7 +48,7 @@ public class CoinSystemPlugin extends JavaPlugin {
 		});
 	}
 
-	public void addCoins(CommandSender sender, Player player, int i) {
+	public void addCoins(CommandSender sender, Player player, long i) {
 		MySQL.addCoinTransaction(player.getUniqueId(), i).thenAccept(result -> {
 			if(result)
 				sender.sendMessage(Messages.load(i >= 0 ? "messages.add" : "messages.remove", player, -1, i));
@@ -57,11 +57,11 @@ public class CoinSystemPlugin extends JavaPlugin {
 		});
 	}
 
-	public void addCoins(UUID uuid, int amount) {
+	public void addCoins(UUID uuid, long amount) {
 		MySQL.addCoinTransaction(uuid, amount);
 	}
 
-	public CompletableFuture<Integer> readBalance(UUID uuid) {
+	public CompletableFuture<Long> readBalance(UUID uuid) {
 		return MySQL.readBalance(uuid);
 	}
 }

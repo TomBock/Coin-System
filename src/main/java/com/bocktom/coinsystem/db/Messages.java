@@ -5,12 +5,12 @@ import org.bukkit.entity.Player;
 
 public class Messages {
 
-	public static String load(String config, Player player, int balance, int amount) {
+	public static String load(String config, Player player, long balance, long amount) {
 		return load(config, player, balance)
 				.replace("{amount}", String.valueOf(amount));
 	}
 
-	public static String load(String config, Player player, int balance) {
+	public static String load(String config, Player player, long balance) {
 		String msg = CoinSystemPlugin.instance.getConfig().getString(config);
 		assert msg != null;
 

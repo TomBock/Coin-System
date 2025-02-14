@@ -33,6 +33,11 @@ public class StatementBuilder {
 		return this;
 	}
 
+	public StatementBuilder setLong(int parameterIndex, long amount) throws SQLException {
+		statement.setLong(parameterIndex, amount);
+		return this;
+	}
+
 	public int executeUpdate() throws SQLException {
 		return statement.executeUpdate();
 	}
