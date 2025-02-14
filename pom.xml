@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Custom -->
-        <server.dir>C:/Users/User/.mcdev/static/server</server.dir>
+        <server.dir>C:/Users/User/.mcdev/static/server_minigame</server.dir>
     </properties>
 
     <repositories>

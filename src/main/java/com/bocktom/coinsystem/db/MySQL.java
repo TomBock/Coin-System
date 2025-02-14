@@ -3,6 +3,7 @@ package com.bocktom.coinsystem.db;
 import com.bocktom.coinsystem.CoinSystemPlugin;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.nio.ByteBuffer;
@@ -10,12 +11,15 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class MySQL {
 
 	private static MySQL instance;
 
 	private final HikariDataSource db;
+
+	private final int retries;
 
 	private MySQL() {
 		FileConfiguration config = CoinSystemPlugin.instance.getConfig();
@@ -26,6 +30,8 @@ public class MySQL {
 		String user = config.getString("mysql.username");
 		String pw = config.getString("mysql.password");
 		String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&&allowPublicKeyRetrieval=true";
+
+		retries = config.getInt("mysql.retries");
 
 		//String jdbcUrl = "jdbc:mysql://localhost:3306/your_database?useSSL=false&serverTimezone=UTC";
 		CoinSystemPlugin.instance.getLogger().info("Connecting to database " + url + " as user " + user + " with pw " + pw);
@@ -43,11 +49,6 @@ public class MySQL {
 	private static MySQL getInstance() {
 		return instance == null ? instance = new MySQL() : instance;
 	}
-
-	//public static HikariDataSource getDataSource() throws SQLNonTransientConnectionException {
-	//	MySQL mySQL = getInstance();
-	//	return new HikariDataSource(mySQL.dbConfig);
-	//}
 
 	private static void logException(String msg, Exception e) {
 		CoinSystemPlugin.instance.getLogger().warning(msg + ": " + e.getMessage());
@@ -68,55 +69,93 @@ public class MySQL {
 		}
 	}
 
-	public static boolean addCoinTransaction(UUID playerId, int amount) {
-		MySQL mySQL = getInstance();
-
-		int affectedRows = 0;
-		try (Connection con = mySQL.db.getConnection()) {
-			con.setAutoCommit(false);
-
-			// UUID as BINARY(16) for faster lookup
-			byte[] playerIdBytes = uuidToBytes(playerId);
-
-			// 1: Insert or update Player Balance
-			affectedRows = new StatementBuilder(con, "insertbalance.sql")
-				.setBytes(1, playerIdBytes)
-				.setInt(2, amount)
-				.setInt(3, amount)
-				.executeUpdate();
-
-			if(affectedRows == 0) {
-				throw new SQLException("Failed to insert balance for player " + playerId);
-			}
-
-			con.commit();
-			return true;
-		} catch (Exception e) {
-			logException("Failed to insert balance for player", e);
-			return false;
-		}
+	public static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, int amount) {
+		return addCoinTransaction(playerId, amount, MySQL.getInstance().retries);
 	}
 
-	public static int readCoins(UUID playerId) {
+	private static CompletableFuture<Boolean> addCoinTransaction(UUID playerId, int amount, int retriesLeft) {
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
+
 		MySQL mySQL = getInstance();
 
-		try (Connection con = mySQL.db.getConnection()) {
-			byte[] playerIdBytes = uuidToBytes(playerId);
+		Bukkit.getScheduler().runTaskAsynchronously(CoinSystemPlugin.instance, () -> {
 
-			try (ResultSet rs = new StatementBuilder(con, "readbalance.sql")
-					.setBytes(1, playerIdBytes)
-					.executeQuery()) {
+			int affectedRows = 0;
+			try (Connection con = mySQL.db.getConnection()) {
+				con.setAutoCommit(false);
 
-				if(rs != null && rs.next()) {
-					return rs.getInt("coins");
+				// UUID as BINARY(16) for faster lookup
+				byte[] playerIdBytes = uuidToBytes(playerId);
+
+				// 1: Insert or update Player Balance
+				affectedRows = new StatementBuilder(con, "insertbalance.sql")
+						.setBytes(1, playerIdBytes)
+						.setInt(2, amount)
+						.setInt(3, amount)
+						.executeUpdate();
+
+				if(affectedRows == 0) {
+					throw new SQLException("Failed to insert balance for player " + playerId);
+				}
+
+				con.commit();
+				future.complete(true);
+			} catch (Exception e) {
+				logException("Failed to insert balance for player. Retries left: " + retriesLeft, e);
+
+				if(retriesLeft > 0)
+				{
+					Bukkit.getScheduler().runTaskLaterAsynchronously(CoinSystemPlugin.instance, () -> {
+						addCoinTransaction(playerId, amount, retriesLeft - 1).thenAccept(future::complete);
+					}, 20L); // 1 second later
+
 				} else {
-					return 0;
+					future.complete(false);
 				}
 			}
-		} catch (Exception e) {
-			logException("Failed to read balance for player", e);
-			return 0;
-		}
+
+		});
+		return future;
+	}
+
+	public static CompletableFuture<Integer> readBalance(UUID playerId) {
+		return attemptReadCoins(playerId, MySQL.getInstance().retries);
+	}
+
+	private static CompletableFuture<Integer> attemptReadCoins(UUID playerId, int retriesLeft) {
+		CompletableFuture<Integer> future = new CompletableFuture<>();
+		MySQL mySQL = getInstance();
+
+		Bukkit.getScheduler().runTaskAsynchronously(CoinSystemPlugin.instance, () -> {
+
+			try (Connection con = mySQL.db.getConnection()) {
+				byte[] playerIdBytes = uuidToBytes(playerId);
+
+				try (ResultSet rs = new StatementBuilder(con, "readbalance.sql")
+						.setBytes(1, playerIdBytes)
+						.executeQuery()) {
+
+					if(rs != null && rs.next()) {
+						future.complete(rs.getInt("coins"));
+					} else {
+						future.complete(0);
+					}
+				}
+			} catch (Exception e) {
+				logException("Failed to read balance for player. Retries left: " + retriesLeft, e);
+
+				if(retriesLeft > 0)
+				{
+					Bukkit.getScheduler().runTaskLaterAsynchronously(CoinSystemPlugin.instance, () -> {
+						attemptReadCoins(playerId, retriesLeft - 1).thenAccept(future::complete);
+					}, 20L); // 1 second later
+
+				} else {
+					future.complete(-1);
+				}
+			}
+		});
+		return future;
 	}
 
 	private static byte[] uuidToBytes(UUID playerId) {

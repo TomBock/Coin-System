@@ -3,6 +3,7 @@ mysql.port: 3306
 mysql.database: test
 mysql.username: plugin_user
 mysql.password: password
+mysql.retries: 3
 
 messages:
   read: "§cBalance: §e{balance}"

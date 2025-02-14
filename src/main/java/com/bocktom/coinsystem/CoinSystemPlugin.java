@@ -10,6 +10,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 
 import java.io.Reader;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class CoinSystemPlugin extends JavaPlugin {
 
@@ -41,21 +43,25 @@ public class CoinSystemPlugin extends JavaPlugin {
 	}
 
 	public void readBalance(CommandSender sender, Player player) {
-		scheduler.runTaskAsynchronously(this, () -> {
-			int balance = MySQL.readCoins(player.getUniqueId());
+		MySQL.readBalance(player.getUniqueId()).thenAccept(balance -> {
 			sender.sendMessage(Messages.load("messages.read", player, balance));
 		});
 	}
 
 	public void addCoins(CommandSender sender, Player player, int i) {
-		scheduler.runTaskAsynchronously(this, () -> {
-			boolean result = MySQL.addCoinTransaction(player.getUniqueId(), i);
-
-			if(result) {
+		MySQL.addCoinTransaction(player.getUniqueId(), i).thenAccept(result -> {
+			if(result)
 				sender.sendMessage(Messages.load(i >= 0 ? "messages.add" : "messages.remove", player, -1, i));
-			} else {
+			else
 				sender.sendMessage(Messages.load("messages.error", player, -1, i));
-			}
 		});
+	}
+
+	public void addCoins(UUID uuid, int amount) {
+		MySQL.addCoinTransaction(uuid, amount);
+	}
+
+	public CompletableFuture<Integer> readBalance(UUID uuid) {
+		return MySQL.readBalance(uuid);
 	}
 }
