@@ -33,9 +33,6 @@ public class MySQL {
 
 		retries = config.getInt("mysql.retries");
 
-		//String jdbcUrl = "jdbc:mysql://localhost:3306/your_database?useSSL=false&serverTimezone=UTC";
-		CoinSystemPlugin.instance.getLogger().info("Connecting to database " + url + " as user " + user + " with pw " + pw);
-
 		HikariConfig dbConfig = new HikariConfig();
 		dbConfig.setJdbcUrl(url);
 		dbConfig.setUsername(user);
