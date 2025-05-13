@@ -15,6 +15,14 @@ public class CoinAPI {
 		CoinSystemPlugin.instance.addCoins(playerUUID, -amount);
 	}
 
+	public static CompletableFuture<Boolean> addCoinsR(UUID playerUUID, long amount) {
+		return CoinSystemPlugin.instance.addCoins(playerUUID, -amount);
+	}
+
+	public static CompletableFuture<Boolean> removeCoinsR(UUID playerUUID, long amount) {
+		return CoinSystemPlugin.instance.addCoins(playerUUID, -amount);
+	}
+
 	public static CompletableFuture<Long> readBalance(UUID playerUUID) {
 		return CoinSystemPlugin.instance.readBalance(playerUUID);
 	}

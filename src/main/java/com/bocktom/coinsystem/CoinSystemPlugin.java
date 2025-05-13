@@ -1,11 +1,15 @@
 package com.bocktom.coinsystem;
 
+import com.bocktom.coinsystem.api.CoinEconomy;
 import com.bocktom.coinsystem.db.Messages;
 import com.bocktom.coinsystem.db.MySQL;
+import com.bocktom.coinsystem.util.CoinPlaceholderExpansion;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 
@@ -28,7 +32,23 @@ public class CoinSystemPlugin extends JavaPlugin {
 		//noinspection DataFlowIssue
 		getCommand("coins").setExecutor(new CoinCommands(this));
 
+		if(!setupEconomy()) {
+			getLogger().severe("Vault not found! Disabling plugin...");
+			getServer().getPluginManager().disablePlugin(this);
+		}
+
+		new CoinPlaceholderExpansion().register();
+
 		scheduler.runTaskAsynchronously(this, MySQL::setupDatabase);
+	}
+
+	private boolean setupEconomy() {
+		if (getServer().getPluginManager().getPlugin("Vault") != null) {
+			getServer().getServicesManager().register(Economy.class, new CoinEconomy(), this, ServicePriority.Normal);
+			getLogger().info("Registered CoinEconomy with Vault!");
+			return true;
+		}
+		return false;
 	}
 
 	private void setupDefaultConfig() {
@@ -57,8 +77,8 @@ public class CoinSystemPlugin extends JavaPlugin {
 		});
 	}
 
-	public void addCoins(UUID uuid, long amount) {
-		MySQL.addCoinTransaction(uuid, amount);
+	public CompletableFuture<Boolean> addCoins(UUID uuid, long amount) {
+		return MySQL.addCoinTransaction(uuid, amount);
 	}
 
 	public CompletableFuture<Long> readBalance(UUID uuid) {
