@@ -6,6 +6,8 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 
 public class CoinPlaceholderExpansion extends PlaceholderExpansion {
@@ -32,7 +34,10 @@ public class CoinPlaceholderExpansion extends PlaceholderExpansion {
 		switch (identifier) {
 			case "balance":
 				try {
-					return String.valueOf(CoinSystemPlugin.instance.readBalance(player.getUniqueId()).get());
+					long balance = CoinSystemPlugin.instance.readBalance(player.getUniqueId()).get();
+
+					NumberFormat format = NumberFormat.getNumberInstance(Locale.GERMANY); // Für deutsche Formatierung (1.000)
+					return format.format(balance);
 				} catch (InterruptedException | ExecutionException ignored) {}
 				return "0";
 		}
